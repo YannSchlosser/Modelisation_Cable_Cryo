@@ -29,7 +29,7 @@ r = Recorder(Point.points_instancies)
 
 
 ########### Demarrage de la simulation ###########
-c.simulation_chute(t0=0, tfin=5, dt=0.0001, recorder=r)
+c.simulation_chute(t0=0, tfin=5, dt=0.01, recorder=r)
 ##################################################
 
 r.calibrage_animation(duree_simu=5)
