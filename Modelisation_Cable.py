@@ -51,14 +51,14 @@ class Cable:
 
                 # Somme des forces
                 somme_forces = force_tension_points_voisins + force_gravite
+                point.somme_des_forces = somme_forces
 
-                # Integration de l'acceleration
-                point.vx = float(point.vx + somme_forces[0] / point.masse * dt)
-                point.vy = float(point.vy + somme_forces[1] / point.masse * dt)
+        for point in self.liste_points:
 
-                # Integration de la vitesse
-                point.x = point.x + point.vx * dt
-                point.y = point.y + point.vy * dt
+            if not point.fige:
+
+                point.update_cinematique(dt)
+                
 
 if __name__ == "__main__":
     
