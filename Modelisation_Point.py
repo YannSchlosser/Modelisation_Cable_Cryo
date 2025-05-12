@@ -10,14 +10,14 @@ class Point:
         Instanciation d'un point. Mesures en metres et en kilogrammes.
         """
 
-        self.vecteur_gauche = np.zeros((2, 1))
-        self.vecteur_droite = np.zeros((2, 1))
-
         # Coordonnees initiales
         self.x = x_ini
         self.y = y_ini
         self.vx = vx_ini
         self.vy = vy_ini
+
+        # Vecteur force : somme des forces
+        self.somme_des_forces = np.zeros((2, 1))
 
         # Point auquel celui ci est rattaché, et calcul de leur distance qui restera fixe
         self.point_de_gauche = pt_rat
@@ -32,6 +32,10 @@ class Point:
 
         # Masse associee au point
         self.masse = None
+
+        # Vecteurs de tensions avec les points voisins - pour la visualisation
+        self.vecteur_gauche = np.zeros((2, 1))
+        self.vecteur_droite = np.zeros((2, 1))
 
         # Donne un indice au pointt et l'ajoute a la liste des points instancies
         self.indice_point = len(Point.points_instancies)
@@ -70,6 +74,16 @@ class Point:
         #     print(force_tension_point_gauche, force_tension_point_droite)
 
         return force_tension_point_gauche + force_tension_point_droite
+    
+    def update_cinematique(self, dt):
+
+        # Integration de l'acceleration
+        self.vx = float(self.vx + self.somme_des_forces[0] / self.masse * dt)
+        self.vy = float(self.vy + self.somme_des_forces[1] / self.masse * dt)
+
+        # Integration de la vitesse
+        self.x = self.x + self.vx * dt
+        self.y = self.y + self.vy * dt
 
 
 
