@@ -35,7 +35,7 @@ class Recorder:
 
     def raz_memoire(self):
         
-        self.memoire = {point.indice_point:{"x":[], "y":[],
+        self.memoire = {point.indice_point:{"x":[], "y":[], "vx":[], "vy":[],
                                             "vecteur_tension_gauche":[], "vecteur_tension_droite":[]} for point in self.liste_points}
         self.memoire["temps"] = []
 
@@ -45,6 +45,9 @@ class Recorder:
         for point in self.liste_points:
             self.memoire[point.indice_point]["x"].append(point.x)
             self.memoire[point.indice_point]["y"].append(point.y)
+            self.memoire[point.indice_point]["vx"].append(point.vx)
+            self.memoire[point.indice_point]["vy"].append(point.vy)
+
             self.memoire[point.indice_point]["vecteur_tension_gauche"].append(point.vecteur_gauche)
             self.memoire[point.indice_point]["vecteur_tension_droite"].append(point.vecteur_droite)
 
@@ -66,6 +69,19 @@ class Recorder:
             nb_frame_sec = self.nb_frame_simu / duree_simu       # Nombre de frame par seconde (non triee)
             self.frame_modulo = int(nb_frame_sec / 58)           # On va afficher 1 frame toute les frame_modulo frames
             self.intervale_frame = 17                       # 58 fps represente un ecart de 17ms entre deux frames
+
+    def func_animation(self, figure, update, init):
+
+        # Dans le cas ou on garde toutes les frames
+        if self.frame_modulo is None:
+            ani = animation.FuncAnimation(figure, update, frames=self.nb_frame_simu, interval=self.intervale_frame, init_func=init, blit=False)
+            
+        # Dans le cas ou on doit trier les frames
+        else:
+            ani = animation.FuncAnimation(figure, update, frames=range(0, self.nb_frame_simu, self.frame_modulo), 
+                                          interval=self.intervale_frame, init_func=init, blit=False)
+            
+        return ani
 
     def animation_cable(self, figure, axe, see_past=False):
 
@@ -100,19 +116,9 @@ class Recorder:
         axe.grid()
 
         title = axe.text(0.5, 1.5, "", bbox={'facecolor':'w', 'alpha':0.5, 'pad':5}, transform=axe.transAxes, ha="center")
-
         lines = [axe.plot([], [], marker='o')[0] for _ in self.liste_points]
-
-        # Dans le cas ou on garde toutes les frames
-        if self.frame_modulo is None:
-            ani = animation.FuncAnimation(figure, update, frames=self.nb_frame_simu, interval=self.intervale_frame, init_func=init, blit=False)
-            
-        # Dans le cas ou on doit trier les frames
-        else:
-            ani = animation.FuncAnimation(figure, update, frames=range(0, self.nb_frame_simu, self.frame_modulo), 
-                                          interval=self.intervale_frame, init_func=init, blit=False)
         
-        return ani
+        return self.func_animation(figure, update=update, init=init)
     
     def animation_vecteur_tension(self, figure, axe, indice_du_point):
         """
@@ -149,18 +155,53 @@ class Recorder:
         axe.grid()
         axe.legend(handles=arrow_patches, loc='upper right')
         
-        # Dans le cas ou on garde toutes les frames
-        if self.frame_modulo is None:
-            ani = animation.FuncAnimation(figure, update, frames=self.nb_frame_simu, interval=self.intervale_frame, init_func=init, blit=True)
+        return self.func_animation(figure, update=update, init=init)
+
+    def animation_energie_systeme(self, figure, axe):
+        """
+        Visualisation de l'energie totale du systeme : Energie potentielle + Energie cinematique
+        """
+
+        # Fonction d'initialisation
+        def init():
+            plot_energie_syst.set_data([], [])
+            return plot_energie_syst
+
+        # Fonction de mise a jour
+        def update(frame):
+            energie_systeme = 0
+            for p in self.liste_points:
+                if not p.fige:
+                    energie_cine, energie_pot = p.calcul_energie(y=self.memoire[p.indice_point]["y"][frame],
+                                                                vx=self.memoire[p.indice_point]["vx"][frame],
+                                                                vy=self.memoire[p.indice_point]["vy"][frame])
+                    energie_systeme += energie_cine + energie_pot
+            trace_energie_systeme[frame] = energie_systeme
+
+            plot_energie_syst.set_data(range(frame + 1), trace_energie_systeme[:frame + 1])
+            plot_energie_syst.set_visible(True)
             
-        # Dans le cas ou on doit trier les frames
-        else:
-            ani = animation.FuncAnimation(figure, update, frames=range(0, self.nb_frame_simu, self.frame_modulo), 
-                                          interval=self.intervale_frame, init_func=init, blit=True)
+            return plot_energie_syst
 
-        return ani
+        # Configuration du graphique
+        energie_ini_systeme = 0
+        for p in self.liste_points:
+            if not p.fige:
+                energie_cine, energie_pot = p.calcul_energie()
+                energie_ini_systeme += energie_cine + energie_pot
+        axe.set_ylim([0.9 * energie_ini_systeme, 1.1 * energie_ini_systeme])
+        axe.set_xlim([0, len(self.memoire[0]["x"])])
 
+        axe.grid()
+        axe.set_xlabel("Frame")
+        axe.set_title("Energie du système (J)")
+        # axe.legend(handles=arrow_patches, loc='upper right')
 
+        trace_energie_systeme = [None for _ in range(self.nb_frame_simu)]
+        plot_energie_syst = axe.plot([], [], marker='o')[0]
+        
+        return self.func_animation(figure, update=update, init=init)
+        
 
 
     

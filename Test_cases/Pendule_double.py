@@ -35,23 +35,15 @@ c.simulation_chute(t0=0, tfin=5, dt=0.01, recorder=r)
 r.calibrage_animation(duree_simu=5)
 
 # Configuration de la figure
-# fig, axes = plt.subplots(1, 2, figsize=(10, 5))
-# ax, ax2 = axes[0], axes[1]
+fig, axes = plt.subplots(1, 2, figsize=(10, 5))
+ax, ax2 = axes[0], axes[1]
 
-# ani1 = r.animation_cable(fig, axes[0], see_past=False)
+ani1 = r.animation_cable(fig, axes[0], see_past=False)
 # ani2 = r.animation_vecteur_tension(fig, axes[1], indice_du_point=1)
+ani3 = r.animation_energie_systeme(fig, axes[1])
 
 # Affichage de l'animation
-# plt.show()
-
-fic = open("/Users/yannschlosser/Desktop/Entrainement Python/fic_main.txt", "w")
-
-for p in r.liste_points:
-    fic.write(str(p.x) + " " + str(p.y) + " " + str(p.vx) + " " + str(p.vy))
-    fic.write("\n")
-
-fic.close()
-
+plt.show()
 
 
 # Sauvegarde du GIF

@@ -41,6 +41,20 @@ class Point:
         self.indice_point = len(Point.points_instancies)
         Point.points_instancies.append(self)
 
+    def calcul_energie(self, y=None, vx=None, vy=None):
+
+        g = 9.81   # m/s^2 - acceleration due à la gravite
+
+        if y is None and vx is None and vy is None:
+            energie_cinetique = 1/2 * self.masse * np.linalg.norm(np.asarray([self.vx, self.vy]))**2
+            energie_potentielle = self.masse * self.y * g
+        
+        else:
+             energie_cinetique = 1/2 * self.masse * np.linalg.norm(np.asarray([vx, vy]))**2
+             energie_potentielle = self.masse * y * g
+
+        return energie_cinetique, energie_potentielle
+
     def gravite(self):
 
         g = 9.81   # m/s^2 - acceleration due à la gravite
@@ -70,20 +84,163 @@ class Point:
 
             self.vecteur_droite = (p2 - p1) / distance_p1_p2
 
-        # if self.indice_point == 1:
-        #     print(force_tension_point_gauche, force_tension_point_droite)
-
         return force_tension_point_gauche + force_tension_point_droite
     
     def update_cinematique(self, dt):
 
         # Integration de l'acceleration
-        self.vx = float(self.vx + self.somme_des_forces[0] / self.masse * dt)
-        self.vy = float(self.vy + self.somme_des_forces[1] / self.masse * dt)
+        # self.vx = float(self.vx + self.somme_des_forces[0] / self.masse * dt)
+        # self.vy = float(self.vy + self.somme_des_forces[1] / self.masse * dt)
 
         # Integration de la vitesse
-        self.x = self.x + self.vx * dt
-        self.y = self.y + self.vy * dt
+        # self.x = self.x + self.vx * dt
+        # self.y = self.y + self.vy * dt
+
+        self.rk4(dt)
+
+
+    def rk4_step(self, dt):
+        # Initialisation des variables temporaires
+        k1_v = np.zeros((len(Point.points_instancies), 2))
+        k1_x = np.zeros((len(Point.points_instancies), 2))
+        k2_v = np.zeros((len(Point.points_instancies), 2))
+        k2_x = np.zeros((len(Point.points_instancies), 2))
+        k3_v = np.zeros((len(Point.points_instancies), 2))
+        k3_x = np.zeros((len(Point.points_instancies), 2))
+        k4_v = np.zeros((len(Point.points_instancies), 2))
+        k4_x = np.zeros((len(Point.points_instancies), 2))
+        
+        # Sauvegarde des états initiaux
+        x_temp = np.array([[p.x, p.y] for p in Point.points_instancies])
+        v_temp = np.array([[p.vx, p.vy] for p in Point.points_instancies])
+
+        # Étape 1 : Calcul de k1
+        for i, point in enumerate(Point.points_instancies):
+            if not point.fige:
+                # Calcul des forces
+                force_gravite = np.array([0, -point.gravite()])
+                force_tension = point.tension().flatten()
+
+                # Accélération
+                a = (force_gravite + force_tension) / point.masse
+
+                # k1
+                k1_v[i] = a
+                k1_x[i] = v_temp[i]
+
+        # Étape 2 : Calcul de k2
+        for i, point in enumerate(Point.points_instancies):
+            if not point.fige:
+                # Mise à jour temporaire des positions et vitesses
+                point.x = x_temp[i, 0] + 0.5 * dt * k1_x[i, 0]
+                point.y = x_temp[i, 1] + 0.5 * dt * k1_x[i, 1]
+                point.vx = v_temp[i, 0] + 0.5 * dt * k1_v[i, 0]
+                point.vy = v_temp[i, 1] + 0.5 * dt * k1_v[i, 1]
+
+                # Calcul des forces
+                force_gravite = np.array([0, -point.gravite()])
+                force_tension = point.tension().flatten()
+
+                # Accélération
+                a = (force_gravite + force_tension) / point.masse
+
+                # k2
+                k2_v[i] = a
+                k2_x[i] = np.array([point.vx, point.vy])
+
+        # Étape 3 : Calcul de k3
+        for i, point in enumerate(Point.points_instancies):
+            if not point.fige:
+                # Mise à jour temporaire des positions et vitesses
+                point.x = x_temp[i, 0] + 0.5 * dt * k2_x[i, 0]
+                point.y = x_temp[i, 1] + 0.5 * dt * k2_x[i, 1]
+                point.vx = v_temp[i, 0] + 0.5 * dt * k2_v[i, 0]
+                point.vy = v_temp[i, 1] + 0.5 * dt * k2_v[i, 1]
+
+                # Calcul des forces
+                force_gravite = np.array([0, -point.gravite()])
+                force_tension = point.tension().flatten()
+
+                # Accélération
+                a = (force_gravite + force_tension) / point.masse
+
+                # k3
+                k3_v[i] = a
+                k3_x[i] = np.array([point.vx, point.vy])
+
+        # Étape 4 : Calcul de k4
+        for i, point in enumerate(Point.points_instancies):
+            if not point.fige:
+                # Mise à jour temporaire des positions et vitesses
+                point.x = x_temp[i, 0] + dt * k3_x[i, 0]
+                point.y = x_temp[i, 1] + dt * k3_x[i, 1]
+                point.vx = v_temp[i, 0] + dt * k3_v[i, 0]
+                point.vy = v_temp[i, 1] + dt * k3_v[i, 1]
+
+                # Calcul des forces
+                force_gravite = np.array([0, -point.gravite()])
+                force_tension = point.tension().flatten()
+
+                # Accélération
+                a = (force_gravite + force_tension) / point.masse
+
+                # k4
+                k4_v[i] = a
+                k4_x[i] = np.array([point.vx, point.vy])
+
+        # Mise à jour finale des positions et vitesses
+        for i, point in enumerate(Point.points_instancies):
+            if not point.fige:
+                point.vx = v_temp[i, 0] + (dt / 6) * (k1_v[i, 0] + 2*k2_v[i, 0] + 2*k3_v[i, 0] + k4_v[i, 0])
+                point.vy = v_temp[i, 1] + (dt / 6) * (k1_v[i, 1] + 2*k2_v[i, 1] + 2*k3_v[i, 1] + k4_v[i, 1])
+
+                point.x = x_temp[i, 0] + (dt / 6) * (k1_x[i, 0] + 2*k2_x[i, 0] + 2*k3_x[i, 0] + k4_x[i, 0])
+                point.y = x_temp[i, 1] + (dt / 6) * (k1_x[i, 1] + 2*k2_x[i, 1] + 2*k3_x[i, 1] + k4_x[i, 1])
+
+    def rk4(self, dt):
+
+        # TODO: pour l'instant l'acceleration se compose de gravite + tension des points voisins, donc rien qui ne depende du temps ni de la vitesse
+        # cependant lorsqu'il y aura des ajouts de frottement et autres forces, il faudra verifier la construction du modele RK4 car les composantes
+        # k sont construites avec des instants ou vitesses futurs
+        # Idem pour la vitesse
+
+        acceleration = self.somme_des_forces / self.masse
+        
+        # Integration de l'acceleration pour obtenir la vitesse
+        k1_v = dt * acceleration
+        k2_v = dt * acceleration
+        k3_v = dt * acceleration
+        k4_v = dt * acceleration
+
+        self.vx = float( self.vx + (1 / 6) * (k1_v[0] + 2*k2_v[0] + 2*k3_v[0] + k4_v[0]) )
+        self.vy = float( self.vy + (1 / 6) * (k1_v[1] + 2*k2_v[1] + 2*k3_v[1] + k4_v[1]) )
+
+        # self.vx = self.vx + acceleration[0] * dt
+        # self.vy = self.vy + acceleration[1] * dt
+
+
+        # Integration de la vitesse pour obtenir la position
+        k1_x = dt * np.array([self.vx, self.vy])
+
+        vx = self.vx + 0.5 * dt * k1_x[0]
+        vy = self.vy + 0.5 * dt * k1_x[1]
+        k2_x = dt * np.array([vx, vy])
+
+        vx = self.vx + 0.5 * dt * k2_x[0]
+        vy = self.vy + 0.5 * dt * k2_x[1]
+        k3_x = dt * np.array([self.vx, self.vy])
+
+        vx = self.vx + dt * k3_x[0]
+        vy = self.vy + dt * k3_x[1]
+        k4_x = dt * np.array([self.vx, self.vy])
+
+        self.x = float( self.x + (1 / 6) * (k1_x[0] + 2*k2_x[0] + 2*k3_x[0] + k4_x[0]) )
+        self.y = float( self.y + (1 / 6) * (k1_x[1] + 2*k2_x[1] + 2*k3_x[1] + k4_x[1]) )
+
+
+        # self.x = self.x + self.vx * dt
+        # self.y = self.y + self.vy * dt
+
 
 
 
